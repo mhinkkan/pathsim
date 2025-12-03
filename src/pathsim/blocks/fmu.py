@@ -15,6 +15,7 @@ from .dynsys import DynamicalSystem
 from ..events.schedule import Schedule, ScheduleList
 from ..events.zerocrossing import ZeroCrossing
 from ..utils.fmuwrapper import FMUWrapper
+from ..utils.register import Register
 
 
 # BLOCKS ================================================================================
@@ -46,16 +47,9 @@ class CoSimulationFMU(Block):
         communication step size
     """
 
-    #max number of ports (will be configured based on FMU)
-    _n_in_max = None
-    _n_out_max = None
-
-    #maps for input and output port labels
-    _port_map_in = {}
-    _port_map_out = {}
-
     def __init__(self, fmu_path, instance_name="fmu_instance", start_values=None,
                  dt=None, verbose=False):
+        super().__init__()
 
         self.fmu_path = fmu_path
         self.instance_name = instance_name
@@ -84,13 +78,14 @@ class CoSimulationFMU(Block):
                 raise ValueError("No step size provided and FMU has no default experiment step size")
         else:
             self.dt = dt
+        
+        #port maps from FMU variables
+        _port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
+        _port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
 
-        # Build port maps from FMU variables
-        self._port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
-        self._port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
-
-        # Initialize base class with proper port configuration
-        super().__init__()
+        #block io with port labels
+        self.inputs = Register(size=len(_port_map_in), mapping=_port_map_in)
+        self.outputs = Register(size=len(_port_map_out), mapping=_port_map_out)
 
         # Initialize FMU
         self.fmu_wrapper.instantiate()
@@ -244,14 +239,6 @@ class ModelExchangeFMU(DynamicalSystem):
         dynamic time event for FMU-scheduled events
     """
 
-    #max number of ports (will be configured based on FMU)
-    _n_in_max = None
-    _n_out_max = None
-
-    #maps for input and output port labels
-    _port_map_in = {}
-    _port_map_out = {}
-
     def __init__(self, fmu_path, instance_name="fmu_instance", start_values=None,
                  tolerance=1e-10, verbose=False):
 
@@ -276,10 +263,6 @@ class ModelExchangeFMU(DynamicalSystem):
 
         # Extract metadata
         self._extract_fmu_metadata()
-
-        # Build port maps from FMU variables
-        self._port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
-        self._port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
 
         # Setup FMU
         self.fmu_wrapper.instantiate()
@@ -314,6 +297,14 @@ class ModelExchangeFMU(DynamicalSystem):
             jac_dyn=None
         )
 
+        #port maps from FMU variables
+        _port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
+        _port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
+
+        #block io with port labels
+        self.inputs = Register(size=len(_port_map_in), mapping=_port_map_in)
+        self.outputs = Register(size=len(_port_map_out), mapping=_port_map_out)
+        
         # Initialize time event manager
         self.time_event = None
 

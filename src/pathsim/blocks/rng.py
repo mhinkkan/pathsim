@@ -10,6 +10,7 @@
 import numpy as np
 
 from ._block import Block
+from ..utils.register import Register
 from ..events.schedule import Schedule 
 
 
@@ -37,16 +38,13 @@ class RandomNumberGenerator(Block):
         value in case `samplingrate` is provided
     """
 
-    #max number of ports
-    _n_in_max = 0
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_out = {"out": 0}
-
     def __init__(self, sampling_rate=None):
         super().__init__()
 
+        #block outputs with port labels
+        self.outputs = Register(mapping={"out": 0})
+
+        #block parameter
         self.sampling_rate = sampling_rate 
 
         #sampling produces discrete time behavior

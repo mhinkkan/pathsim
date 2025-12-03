@@ -12,7 +12,7 @@
 import numpy as np
 
 from ._block import Block
-
+from ..utils.register import Register
 from ..optim.operator import Operator
 
 
@@ -75,15 +75,11 @@ class Adder(Block):
         internal algebraic operator
     """
 
-    #max number of ports
-    _n_in_max = None
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_out = {"out": 0}
-
     def __init__(self, operations=None):
         super().__init__()
+
+        #outputs mapping
+        self.outputs = Register(mapping={"out":0})
 
         #allowed arithmetic operations
         self._ops = {"+":1.0, "-":-1.0, "0":0.0}

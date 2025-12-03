@@ -3,8 +3,6 @@
 ##                             TIME DOMAIN DELAY BLOCK 
 ##                                (blocks/delay.py)
 ##
-##                                Milan Rother 2024
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -59,14 +57,6 @@ class Delay(Block):
         internal interpolatable adaptive rolling buffer
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, tau=1e-3):
         super().__init__()
 
@@ -117,4 +107,4 @@ class Delay(Block):
         """
 
         #add new value to buffer
-        self._buffer.add(t, self.inputs[0])
+        self._buffer.add(t, self.inputs.to_array())

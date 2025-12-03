@@ -3,8 +3,6 @@
 ##                                 COMPARATOR BLOCK
 ##                              (blocks/comparator.py)
 ##
-##                                Milan Rother 2024
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -12,6 +10,7 @@
 import numpy as np
 
 from ._block import Block
+from ..utils.register import Register
 from ..events.zerocrossing import ZeroCrossing
 
 
@@ -44,17 +43,14 @@ class Comparator(Block):
         internal zero crossing event
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, threshold=0, tolerance=1e-4, span=[-1, 1]):
         super().__init__()
 
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
+
+        #block parameters
         self.threshold = threshold
         self.tolerance = tolerance
         self.span = span

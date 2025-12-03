@@ -2,8 +2,6 @@
 ##
 ##                               FILTERS (filters.py)
 ##
-##                                Milan Rother 2024
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -15,6 +13,7 @@ from scipy.signal import butter, tf2ss
 from math import factorial
 
 from .lti import StateSpace
+from ..utils.register import Register
 
 
 # FILTER BLOCKS =========================================================================
@@ -35,14 +34,6 @@ class ButterworthLowpassFilter(StateSpace):
         filter order
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, Fc=100, n=2):
 
         #filter parameters
@@ -56,6 +47,10 @@ class ButterworthLowpassFilter(StateSpace):
         #rescale to actual bandwidth and make statespace model
         omega_c = 2*np.pi*self.Fc
         super().__init__(omega_c*A, omega_c*B, C, D)
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
 
 
 class ButterworthHighpassFilter(StateSpace):
@@ -74,14 +69,6 @@ class ButterworthHighpassFilter(StateSpace):
         filter order
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, Fc=100, n=2):
 
         #filter parameters
@@ -95,6 +82,10 @@ class ButterworthHighpassFilter(StateSpace):
         #rescale to actual bandwidth and make statespace model
         omega_c = 2*np.pi*self.Fc
         super().__init__(omega_c*A, omega_c*B, C, D)
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
 
 
 class ButterworthBandpassFilter(StateSpace):
@@ -113,14 +104,6 @@ class ButterworthBandpassFilter(StateSpace):
         filter order
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, Fc=[50, 100], n=2):
 
         #filter parameters
@@ -135,6 +118,10 @@ class ButterworthBandpassFilter(StateSpace):
 
         #initialize parent block
         super().__init__(*tf2ss(num, den))
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
 
 
 class ButterworthBandstopFilter(StateSpace):
@@ -153,14 +140,6 @@ class ButterworthBandstopFilter(StateSpace):
         filter order
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, Fc=[50, 100], n=2):
 
         #filter parameters
@@ -175,6 +154,10 @@ class ButterworthBandstopFilter(StateSpace):
 
         #initialize parent block
         super().__init__(*tf2ss(num, den))
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
 
 
 class AllpassFilter(StateSpace):
@@ -194,14 +177,6 @@ class AllpassFilter(StateSpace):
     n : int
         number of cascades
     """
-    
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
 
     def __init__(self, fs=100, n=1):
 
@@ -226,3 +201,7 @@ class AllpassFilter(StateSpace):
 
         #initialize parent block
         super().__init__(omega_s*A, omega_s*B, C, D)
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})

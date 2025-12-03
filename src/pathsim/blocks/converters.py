@@ -3,8 +3,6 @@
 ##                            IDEAL AD AND DA CONVERTERS
 ##                              (blocks/converters.py)
 ##
-##                                Milan Rother 2025
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -12,8 +10,8 @@
 import numpy as np
 
 from ._block import Block
-from ..events.schedule import Schedule
 from ..utils.register import Register
+from ..events.schedule import Schedule
 
 
 # MIXED SIGNAL BLOCKS ===================================================================
@@ -61,26 +59,21 @@ class ADC(Block):
         Internal scheduled event responsible for periodic sampling and conversion.
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = None
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-
     def __init__(self, n_bits=4, span=[-1, 1], T=1, tau=0):
         super().__init__()
 
+        #block params
         self.n_bits = n_bits
         self.span = span
         self.T = T
         self.tau = tau
 
         #port alias map
-        self._port_map_out = {f"b{self.n_bits-n}":n for n in range(self.n_bits)}
-        
-        #initialize outputs to have 'n_bits' ports
-        self.outputs = Register(size=self.n_bits, mapping=self._port_map_out)
+        _port_map_out = {f"b{self.n_bits-n}":n for n in range(self.n_bits)}
+
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(size=self.n_bits, mapping=_port_map_out)
 
         def _sample(t):
 
@@ -159,13 +152,6 @@ class DAC(Block):
         Internal scheduled event responsible for periodic updates.
     """
 
-    #max number of ports
-    _n_in_max = None
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_out = {"out": 0}
-
     def __init__(self, n_bits=4, span=[-1, 1], T=1, tau=0):
         super().__init__()
 
@@ -175,10 +161,11 @@ class DAC(Block):
         self.tau = tau
 
         #port alias map
-        self._port_map_in = {f"b{self.n_bits-n}":n for n in range(self.n_bits)}
+        _port_map_in = {f"b{self.n_bits-n}":n for n in range(self.n_bits)}
 
-        #initialize inputs to expect 'n_bits' entries
-        self.inputs = Register(self.n_bits, mapping=self._port_map_in)
+        #block io with port labels
+        self.inputs = Register(size=self.n_bits, mapping=_port_map_in)
+        self.outputs = Register(mapping={"out":0})
 
         def _sample(t):
             

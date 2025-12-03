@@ -3,8 +3,6 @@
 ##                               DIFFERENTIATOR BLOCK 
 ##                            (blocks/differentiator.py)
 ##
-##                                Milan Rother 2024
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -62,14 +60,6 @@ class Differentiator(Block):
 
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-
     def __init__(self, f_max=1e2):
         super().__init__()
 
@@ -78,12 +68,12 @@ class Differentiator(Block):
 
         self.op_dyn = DynamicOperator(
             func=lambda x, u, t: self.f_max * (u - x),
-            jac_x=lambda x, u, t: -self.f_max
+            jac_x=lambda x, u, t: -self.f_max*np.eye(len(u))
             )
         self.op_alg = DynamicOperator(
             func=lambda x, u, t: self.f_max * (u - x),
-            jac_x=lambda x, u, t: -self.f_max,
-            jac_u=lambda x, u, t: self.f_max,
+            jac_x=lambda x, u, t: -self.f_max*np.eye(len(u)),
+            jac_u=lambda x, u, t: self.f_max*np.eye(len(u)),
             )
 
     def __len__(self):
@@ -118,7 +108,7 @@ class Differentiator(Block):
         t : float
             evaluation time
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.get(), self.inputs.to_array()
         y = self.op_alg(x, u, t)
         self.outputs.update_from_array(y)
 
@@ -138,7 +128,7 @@ class Differentiator(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.get(), self.inputs.to_array()
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -162,6 +152,6 @@ class Differentiator(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.get(), self.inputs.to_array()
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)

@@ -3,8 +3,6 @@
 ##               DISCRETE-TIME FINITE-IMPULSE-RESPONSE (FIR) FILTER BLOCK
 ##                                  (blocks/fir.py) 
 ##
-##                                 Milan Rother 2025
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -13,6 +11,7 @@ import numpy as np
 from collections import deque
 
 from ._block import Block    
+from ..utils.register import Register
 from ..events.schedule import Schedule 
 
 
@@ -69,17 +68,14 @@ class FIR(Block):
         Internal scheduled event triggering the filter calculation.
     """
 
-    #max number of ports
-    _n_in_max = 1
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_in = {"in": 0}
-    _port_map_out = {"out": 0}
-    
     def __init__(self, coeffs=[1.0], T=1, tau=0):
         super().__init__()
 
+        #block io with port labels
+        self.inputs = Register(mapping={"in": 0})
+        self.outputs = Register(mapping={"out": 0})
+
+        #block params
         self.coeffs = np.array(coeffs)
         self.T = T
         self.tau = tau

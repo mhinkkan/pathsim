@@ -4,8 +4,6 @@
 ##
 ##                     This module defines static 'Multiplier' block
 ##
-##                                   Milan Rother 2024
-##
 #########################################################################################
 
 # IMPORTS ===============================================================================
@@ -15,6 +13,7 @@ import numpy as np
 from math import prod
 
 from ._block import Block
+from ..utils.register import Register
 from ..optim.operator import Operator
 
 
@@ -40,15 +39,12 @@ class Multiplier(Block):
     op_alg : Operator
         internal algebraic operator that wraps 'prod'
     """
-    #max number of ports
-    _n_in_max = None
-    _n_out_max = 1
-
-    #maps for input and output port labels
-    _port_map_out = {"out": 0}
 
     def __init__(self):
         super().__init__()
+
+        #block outputs with port labels
+        self.outputs = Register(mapping={"out": 0})
 
         self.op_alg = Operator(
             func=prod, 
