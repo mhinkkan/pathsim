@@ -23,7 +23,6 @@ from ..utils.realtimeplotter import RealtimePlotter
 from .._constants import COLORS_ALL
 
 
-
 # BLOCKS FOR DATA RECORDING =============================================================
 
 class Scope(Block):
@@ -53,10 +52,6 @@ class Scope(Block):
         internal scheduled event for periodic input sampling when `sampling_rate` is provided
     """
     
-    #max number of ports
-    _n_in_max = None
-    _n_out_max = 0
-
     def __init__(self, sampling_rate=None, t_wait=0.0, labels=None):
         super().__init__()
         
