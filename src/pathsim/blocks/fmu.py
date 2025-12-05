@@ -7,7 +7,7 @@
 
 # IMPORTS ===============================================================================
 
-import numpy as np
+import bisect
 
 from ._block import Block
 from .dynsys import DynamicalSystem
@@ -15,7 +15,6 @@ from .dynsys import DynamicalSystem
 from ..events.schedule import Schedule, ScheduleList
 from ..events.zerocrossing import ZeroCrossing
 from ..utils.fmuwrapper import FMUWrapper
-from ..utils.register import Register
 
 
 # BLOCKS ================================================================================
@@ -25,7 +24,7 @@ class CoSimulationFMU(Block):
 
     This block wraps an FMU (Functional Mock-up Unit) for co-simulation.
     The FMU encapsulates a simulation model that can be executed independently
-    and synchronized with the main simulation.
+    and synchronized with the main simulation at discrete communication points.
 
     Parameters
     ----------
@@ -42,172 +41,68 @@ class CoSimulationFMU(Block):
     Attributes
     ----------
     fmu_wrapper : FMUWrapper
-        version-agnostic FMU wrapper instance
+        version-agnostic FMU wrapper instance providing access to model_description,
+        fmu, and other FMPy objects for advanced usage
     dt : float
         communication step size
     """
 
-    def __init__(self, fmu_path, instance_name="fmu_instance", start_values=None,
-                 dt=None, verbose=False):
+    def __init__(self, fmu_path, instance_name="fmu_instance", start_values=None, dt=None):
         super().__init__()
 
-        self.fmu_path = fmu_path
-        self.instance_name = instance_name
-        self.verbose = verbose
-        self.start_values = start_values if start_values is not None else {}
+        self.start_values = start_values
 
-        # Create FMU wrapper
+        # Create and initialize FMU wrapper
         self.fmu_wrapper = FMUWrapper(fmu_path, instance_name, mode='cosimulation')
-
-        # Expose commonly used attributes for backward compatibility
-        self.model_description = self.fmu_wrapper.model_description
-        self.fmi_version = self.fmu_wrapper.fmi_version
-        self.unzipdir = self.fmu_wrapper.unzipdir
-        self.fmu = self.fmu_wrapper.fmu
-        self._input_refs = self.fmu_wrapper.input_refs
-        self._output_refs = self.fmu_wrapper.output_refs
-
-        # Extract metadata
-        self._extract_fmu_metadata()
+        self.fmu_wrapper.initialize(start_values, start_time=0.0)
 
         # Determine step size
-        if dt is None:
-            if self.default_step_size is not None:
-                self.dt = self.default_step_size
-            else:
-                raise ValueError("No step size provided and FMU has no default experiment step size")
-        else:
-            self.dt = dt
-        
-        #port maps from FMU variables
-        _port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
-        _port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
+        self.dt = dt if dt is not None else self.fmu_wrapper.default_step_size
+        if self.dt is None:
+            raise ValueError("No step size provided and FMU has no default experiment step size")
 
-        #block io with port labels
-        self.inputs = Register(size=len(_port_map_in), mapping=_port_map_in)
-        self.outputs = Register(size=len(_port_map_out), mapping=_port_map_out)
+        # Setup block I/O from FMU variables
+        self.inputs, self.outputs = self.fmu_wrapper.create_port_registers()
 
-        # Initialize FMU
-        self.fmu_wrapper.instantiate()
-        self.fmu_wrapper.setup_experiment(start_time=0.0)
-        self.fmu_wrapper.enter_initialization_mode()
-
-        # Set start values
-        for name, value in self.start_values.items():
-            self.fmu_wrapper.set_variable(name, value)
-
-        # Exit initialization mode
-        self.fmu_wrapper.exit_initialization_mode()
-
-        # Internal scheduled event function
+        # Scheduled co-simulation step
         self.events = [
             Schedule(
-                t_start=0,
-                t_period=self.dt,
+                t_start=0, 
+                t_period=self.dt, 
                 func_act=self._step_fmu
-            )
-        ]
+                )
+            ]
 
         # Read initial outputs
-        self._update_outputs_from_fmu()
-
-
-    def _extract_fmu_metadata(self):
-        """Extract metadata and capabilities from FMU."""
-
-        md = self.fmu_wrapper.model_description
-        cs = md.coSimulation
-
-        if cs is None:
-            raise ValueError("FMU does not support Co-Simulation")
-
-        # Extract capabilities
-        self.can_interpolate_inputs = getattr(cs, 'canInterpolateInputs', False)
-        self.can_handle_variable_step = getattr(cs, 'canHandleVariableCommunicationStepSize', False)
-        self.max_output_derivative_order = getattr(cs, 'maxOutputDerivativeOrder', 0)
-
-        # Extract default experiment settings
-        default_experiment = md.defaultExperiment
-
-        if default_experiment is not None:
-            self.default_start_time = getattr(default_experiment, 'startTime', 0.0)
-            self.default_stop_time = getattr(default_experiment, 'stopTime', None)
-            self.default_step_size = getattr(default_experiment, 'stepSize', None)
-            self.default_tolerance = getattr(default_experiment, 'tolerance', None)
-        else:
-            self.default_start_time = 0.0
-            self.default_stop_time = None
-            self.default_step_size = None
-            self.default_tolerance = None
-
-        # Model metadata
-        self.model_name = md.modelName
-        self.generation_tool = getattr(md, 'generationTool', 'Unknown')
-        self.generation_date = getattr(md, 'generationDateAndTime', 'Unknown')
-        self.description = getattr(md, 'description', '')
-        self.author = getattr(md, 'author', 'Unknown')
-        self.version = getattr(md, 'version', 'Unknown')
+        self.outputs.update_from_array(self.fmu_wrapper.get_outputs_as_array())
 
 
     def _step_fmu(self, t):
-        """Perform one FMU co-simulation step"""
-        self._update_fmu_from_inputs()
+        """Perform one FMU co-simulation step."""
+        self.fmu_wrapper.set_inputs_from_array(self.inputs.to_array())
 
-        # Perform co-simulation step
         result = self.fmu_wrapper.do_step(
-            current_time=t,
+            current_time=t, 
             step_size=self.dt
-        )
+            )
 
-        # Handle FMI 3.0 specific results
         if result.terminate_simulation:
             raise RuntimeError("FMU requested simulation termination")
 
-        self._update_outputs_from_fmu()
-
-
-    def _update_fmu_from_inputs(self):
-        """Read block inputs and update FMU inputs."""
-        if len(self.fmu_wrapper.input_refs) > 0:
-            input_vrefs = list(self.fmu_wrapper.input_refs.values())
-            self.fmu_wrapper.set_real(input_vrefs, self.inputs.to_array())
-
-
-    def _update_outputs_from_fmu(self):
-        """Read outputs from FMU and update block outputs."""
-        if len(self.fmu_wrapper.output_refs) > 0:
-            output_vrefs = list(self.fmu_wrapper.output_refs.values())
-            self.outputs.update_from_array(self.fmu_wrapper.get_real(output_vrefs))
-
-
-    def update(self, t):
-        """Update FMU inputs/outputs between scheduled steps if interpolation supported."""
-        if self.can_interpolate_inputs:
-            self._update_fmu_from_inputs()
-            self._update_outputs_from_fmu()
+        self.outputs.update_from_array(self.fmu_wrapper.get_outputs_as_array())
 
 
     def reset(self):
         """Reset the FMU instance."""
         super().reset()
         self.fmu_wrapper.reset()
-        self.fmu_wrapper.enter_initialization_mode()
-        self.fmu_wrapper.exit_initialization_mode()
-        self._update_outputs_from_fmu()
+        self.fmu_wrapper.initialize(self.start_values, start_time=0.0)
+        self.outputs.update_from_array(self.fmu_wrapper.get_outputs_as_array())
 
 
     def __len__(self):
-        """FMU is a discrete time source-like block without direct passthrough"""
+        """FMU is a discrete time source-like block without direct passthrough."""
         return 0
-
-
-    def __del__(self):
-        """Cleanup FMU resources."""
-        try:
-            self.fmu_wrapper.terminate()
-            self.fmu_wrapper.free_instance()
-        except:
-            pass
 
 
 class ModelExchangeFMU(DynamicalSystem):
@@ -234,7 +129,8 @@ class ModelExchangeFMU(DynamicalSystem):
     Attributes
     ----------
     fmu_wrapper : FMUWrapper
-        version-agnostic FMU wrapper instance
+        version-agnostic FMU wrapper instance providing access to model_description,
+        fmu, and other FMPy objects for advanced usage
     time_event : ScheduleList or None
         dynamic time event for FMU-scheduled events
     """
@@ -242,39 +138,13 @@ class ModelExchangeFMU(DynamicalSystem):
     def __init__(self, fmu_path, instance_name="fmu_instance", start_values=None,
                  tolerance=1e-10, verbose=False):
 
-        self.fmu_path = fmu_path
-        self.instance_name = instance_name
-        self.verbose = verbose
         self.tolerance = tolerance
-        self.start_values = start_values if start_values is not None else {}
+        self.verbose = verbose
+        self.start_values = start_values
 
-        # Create FMU wrapper
+        # Create and initialize FMU wrapper
         self.fmu_wrapper = FMUWrapper(fmu_path, instance_name, mode='model_exchange')
-
-        # Expose commonly used attributes for backward compatibility
-        self.model_description = self.fmu_wrapper.model_description
-        self.fmi_version = self.fmu_wrapper.fmi_version
-        self.unzipdir = self.fmu_wrapper.unzipdir
-        self.fmu = self.fmu_wrapper.fmu
-        self.n_states = self.fmu_wrapper.n_states
-        self.n_event_indicators = self.fmu_wrapper.n_event_indicators
-        self._input_refs = self.fmu_wrapper.input_refs
-        self._output_refs = self.fmu_wrapper.output_refs
-
-        # Extract metadata
-        self._extract_fmu_metadata()
-
-        # Setup FMU
-        self.fmu_wrapper.instantiate()
-        self.fmu_wrapper.setup_experiment(tolerance=self.tolerance, start_time=0.0)
-        self.fmu_wrapper.enter_initialization_mode()
-
-        # Set start values
-        for name, value in self.start_values.items():
-            self.fmu_wrapper.set_variable(name, value)
-
-        # Exit initialization mode and check for initial events
-        event_info = self.fmu_wrapper.exit_initialization_mode()
+        event_info = self.fmu_wrapper.initialize(start_values, start_time=0.0, tolerance=tolerance)
 
         # Store initial time event if defined
         self._initial_time_event = (
@@ -283,149 +153,133 @@ class ModelExchangeFMU(DynamicalSystem):
             else None
         )
 
-        # Enter continuous time mode after initialization
+        # Enter continuous time mode
         self.fmu_wrapper.enter_continuous_time_mode()
 
-        # Get initial continuous states
-        initial_states = self.fmu_wrapper.get_continuous_states()
-
         # Initialize parent DynamicalSystem with FMU dynamics
+        # Use FMU's Jacobian if available (providesDirectionalDerivative=true)
+        jac_func = self._get_jacobian if self.fmu_wrapper.provides_jacobian else None
+
         super().__init__(
             func_dyn=self._get_derivatives,
             func_alg=self._get_outputs,
-            initial_value=initial_states,
-            jac_dyn=None
+            initial_value=self.fmu_wrapper.get_continuous_states(),
+            jac_dyn=jac_func
         )
 
-        #port maps from FMU variables
-        _port_map_in = {name: idx for idx, name in enumerate(self.fmu_wrapper.input_refs.keys())}
-        _port_map_out = {name: idx for idx, name in enumerate(self.fmu_wrapper.output_refs.keys())}
+        # Setup block I/O from FMU variables
+        self.inputs, self.outputs = self.fmu_wrapper.create_port_registers()
 
-        #block io with port labels
-        self.inputs = Register(size=len(_port_map_in), mapping=_port_map_in)
-        self.outputs = Register(size=len(_port_map_out), mapping=_port_map_out)
-        
         # Initialize time event manager
         self.time_event = None
 
-        # Create state event (zero-crossing) events for each event indicator
+        # Create state event (zero-crossing) for each event indicator
         for i in range(self.fmu_wrapper.n_event_indicators):
-            event = ZeroCrossing(
-                func_evt=lambda t, idx=i: self._get_event_indicator(idx),
-                func_act=self._handle_event,
-                tolerance=self.tolerance
-            )
-            self.events.append(event)
+            self.events.append(
+                ZeroCrossing(
+                    func_evt=lambda t, idx=i: self._get_event_indicator(idx),
+                    func_act=self._handle_event,
+                    tolerance=self.tolerance
+                    )
+                )
+
+        # Cache capability flag for sample() performance
+        self._needs_completed_integrator_step = self.fmu_wrapper.needs_completed_integrator_step
 
         # Schedule initial time event if any
         if self._initial_time_event is not None:
             self._update_time_events(self._initial_time_event)
 
 
-    def _extract_fmu_metadata(self):
-        """Extract metadata and capabilities from FMU."""
-
-        md = self.fmu_wrapper.model_description
-        me = md.modelExchange
-
-        if me is None:
-            raise ValueError("FMU does not support Model Exchange")
-
-        # Extract capabilities
-        self.provides_directional_derivative = getattr(me, 'providesDirectionalDerivative', False)
-        self.completed_integrator_step_not_needed = getattr(me, 'completedIntegratorStepNotNeeded', False)
-
-        # Model metadata
-        self.model_name = md.modelName
-        self.generation_tool = getattr(md, 'generationTool', 'Unknown')
-        self.generation_date = getattr(md, 'generationDateAndTime', 'Unknown')
-        self.description = getattr(md, 'description', '')
-        self.author = getattr(md, 'author', 'Unknown')
-        self.version = getattr(md, 'version', 'Unknown')
-
-
     def _get_derivatives(self, x, u, t):
-        """Evaluate FMU derivatives (RHS of ODE).
-
-        Parameters
-        ----------
-        x : array
-            continuous state vector
-        u : array
-            input vector
-        t : float
-            current time
-
-        Returns
-        -------
-        dx : array
-            state derivatives
-        """
+        """Evaluate FMU derivatives (RHS of ODE)."""
         if self.fmu_wrapper.n_states == 0:
-            return np.array([])
+            return []
 
-        # Set FMU state
         self.fmu_wrapper.set_time(t)
         self.fmu_wrapper.set_continuous_states(x)
-
-        if len(self.fmu_wrapper.input_refs) > 0:
-            input_vrefs = list(self.fmu_wrapper.input_refs.values())
-            self.fmu_wrapper.set_real(input_vrefs, u)
+        self.fmu_wrapper.set_inputs_from_array(u)
 
         return self.fmu_wrapper.get_derivatives()
 
 
-    def _get_outputs(self, x, u, t):
-        """Evaluate FMU outputs (algebraic part).
-
-        Parameters
-        ----------
-        x : array
-            continuous state vector
-        u : array
-            input vector
-        t : float
-            current time
-
-        Returns
-        -------
-        y : array
-            output vector
-        """
-        # Set FMU state
+    def _get_jacobian(self, x, u, t):
+        """Evaluate Jacobian of FMU derivatives w.r.t. states (∂ẋ/∂x)."""
         self.fmu_wrapper.set_time(t)
         self.fmu_wrapper.set_continuous_states(x)
+        self.fmu_wrapper.set_inputs_from_array(u)
 
-        if len(self.fmu_wrapper.input_refs) > 0:
-            input_vrefs = list(self.fmu_wrapper.input_refs.values())
-            self.fmu_wrapper.set_real(input_vrefs, u)
+        return self.fmu_wrapper.get_state_jacobian()
 
-        if len(self.fmu_wrapper.output_refs) == 0:
-            return np.array([])
 
-        output_vrefs = list(self.fmu_wrapper.output_refs.values())
-        return self.fmu_wrapper.get_real(output_vrefs)
+    def _get_outputs(self, x, u, t):
+        """Evaluate FMU outputs (algebraic part)."""
+        self.fmu_wrapper.set_time(t)
+        self.fmu_wrapper.set_continuous_states(x)
+        self.fmu_wrapper.set_inputs_from_array(u)
+
+        return self.fmu_wrapper.get_outputs_as_array()
+
+
+    def _get_event_indicator(self, idx):
+        """Get value of a specific event indicator."""
+        return self.fmu_wrapper.get_event_indicators()[idx]
+
+
+    def _handle_event(self, t):
+        """Handle FMU event with fixed-point iteration for discrete states."""
+        if self.verbose:
+            print(f"FMU event detected at t={t}")
+
+        self.fmu_wrapper.enter_event_mode()
+
+        # Iterate until discrete states stabilize
+        while True:
+            event_info = self.fmu_wrapper.update_discrete_states()
+
+            if event_info.terminate_simulation:
+                raise RuntimeError("FMU requested simulation termination")
+
+            if not event_info.discrete_states_need_update:
+                break
+
+        self.fmu_wrapper.enter_continuous_time_mode()
+
+        # Update continuous states if changed
+        if event_info.values_changed:
+            x_new = self.fmu_wrapper.get_continuous_states()
+            self.engine.set(x_new)
+            if self.verbose:
+                print(f"Continuous states updated after event: {x_new}")
+
+        # Schedule new time events
+        if event_info.next_event_time_defined:
+            self._update_time_events(event_info.next_event_time)
+            if self.verbose:
+                print(f"Next time event scheduled at t={event_info.next_event_time}")
+
+
+    def _update_time_events(self, next_time):
+        """Update or create time event schedule."""
+        if self.time_event is None:
+            self.time_event = ScheduleList(
+                times_evt=[next_time],
+                func_act=self._handle_event,
+                tolerance=self.tolerance
+            )
+            self.events.append(self.time_event)
+        elif next_time not in self.time_event.times_evt:
+            bisect.insort(self.time_event.times_evt, next_time)
 
 
     def sample(self, t, dt):
-        """Sample block after successful timestep and handle FMU step completion events.
-
-        Parameters
-        ----------
-        t : float
-            evaluation time for sampling
-        dt : float
-            integration timestep
-        """
+        """Sample block after successful timestep and handle FMU step completion events."""
         super().sample(t, dt)
 
-        # If FMU requires completedIntegratorStep, call it after successful step
-        if not self.completed_integrator_step_not_needed:
+        if self._needs_completed_integrator_step:
             enter_event_mode, terminate_simulation = self.fmu_wrapper.completed_integrator_step()
 
             if terminate_simulation:
-                if self.verbose:
-                    print("FMU requested termination in completedIntegratorStep")
                 raise RuntimeError("FMU requested simulation termination")
 
             if enter_event_mode:
@@ -434,120 +288,26 @@ class ModelExchangeFMU(DynamicalSystem):
                 self._handle_event(t)
 
 
-    def _get_event_indicator(self, idx):
-        """Get value of a specific event indicator.
-
-        Parameters
-        ----------
-        idx : int
-            index of the event indicator
-
-        Returns
-        -------
-        float
-            event indicator value
-        """
-        indicators = self.fmu_wrapper.get_event_indicators()
-        return indicators[idx]
-
-
-    def _handle_event(self, t):
-        """Handle FMU event with fixed-point iteration for discrete states.
-
-        Parameters
-        ----------
-        t : float
-            event time
-        """
-        if self.verbose:
-            print(f"FMU event detected at t={t}")
-
-        # Enter event mode before event iteration
-        self.fmu_wrapper.enter_event_mode()
-
-        # Perform event update iteration until discrete states stabilize
-        while True:
-            event_info = self.fmu_wrapper.update_discrete_states()
-
-            # Check if simulation should terminate
-            if event_info.terminate_simulation:
-                if self.verbose:
-                    print("FMU requested simulation termination")
-                raise RuntimeError("FMU requested simulation termination")
-
-            # Break if no more discrete state updates needed
-            if not event_info.discrete_states_need_update:
-                break
-
-        # Re-enter continuous time mode after event handling
-        self.fmu_wrapper.enter_continuous_time_mode()
-
-        # Check if continuous states changed during event
-        if event_info.values_changed:
-            x_new = self.fmu_wrapper.get_continuous_states()
-            self.engine.set(x_new)
-            if self.verbose:
-                print(f"Continuous states updated after event: {x_new}")
-
-        # Update time events if FMU scheduled new ones
-        if event_info.next_event_time_defined:
-            self._update_time_events(event_info.next_event_time)
-            if self.verbose:
-                print(f"Next time event scheduled at t={event_info.next_event_time}")
-
-
-    def _update_time_events(self, next_time):
-        """Update or create time event schedule.
-
-        Parameters
-        ----------
-        next_time : float
-            next scheduled event time
-        """
-        if self.time_event is None:
-            # Create new ScheduleList with the first time event
-            self.time_event = ScheduleList(
-                times_evt=[next_time],
-                func_act=self._handle_event,
-                tolerance=self.tolerance
-            )
-            self.events.append(self.time_event)
-        elif next_time not in self.time_event.times_evt:
-            # Insert new time in sorted order
-            import bisect
-            bisect.insort(self.time_event.times_evt, next_time)
-
-
     def reset(self):
         """Reset the FMU instance."""
         super().reset()
         self.fmu_wrapper.reset()
 
         # Re-initialize FMU
-        self.fmu_wrapper.setup_experiment(tolerance=self.tolerance, start_time=0.0)
-        self.fmu_wrapper.enter_initialization_mode()
-
-        for name, value in self.start_values.items():
-            self.fmu_wrapper.set_variable(name, value)
-
-        event_info = self.fmu_wrapper.exit_initialization_mode()
+        event_info = self.fmu_wrapper.initialize(
+            self.start_values, start_time=0.0, tolerance=self.tolerance
+        )
         self.fmu_wrapper.enter_continuous_time_mode()
 
         # Reset to initial states
         self.engine.set(self.fmu_wrapper.get_continuous_states())
 
-        # Reset time events and re-schedule initial event if present
+        # Reset time events
         if self.time_event is not None:
             self.time_event.times_evt.clear()
-            if self._initial_time_event is not None:
-                import bisect
-                bisect.insort(self.time_event.times_evt, self._initial_time_event)
 
-
-    def __del__(self):
-        """Cleanup FMU resources."""
-        try:
-            self.fmu_wrapper.terminate()
-            self.fmu_wrapper.free_instance()
-        except Exception:
-            pass
+        # Schedule initial time event from re-initialization or cached initial
+        if event_info and event_info.next_event_time_defined:
+            self._update_time_events(event_info.next_event_time)
+        elif self._initial_time_event is not None:
+            self._update_time_events(self._initial_time_event)
