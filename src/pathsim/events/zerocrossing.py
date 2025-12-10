@@ -93,7 +93,7 @@ class ZeroCrossing(Event):
 
         # exactly hit zero -> quit early
         if result == 0.0 and _result != 0.0:
-            return True, True, TOLERANCE
+            return True, True, 1.0
 
         # are we close to the actual event?
         close = abs(result) <= self.tolerance
@@ -151,7 +151,7 @@ class ZeroCrossingUp(Event):
 
         # exactly hit zero -> quit early
         if result == 0.0 and _result < 0.0:
-            return True, True, TOLERANCE
+            return True, True, 1.0
 
         # are we close to the actual event?
         close = abs(result) <= self.tolerance
@@ -209,7 +209,7 @@ class ZeroCrossingDown(Event):
         
         # exactly hit zero -> quit early
         if result == 0.0 and _result > 0.0:
-            return True, True, TOLERANCE
+            return True, True, 1.0
 
         # are we close to the actual event?
         close = abs(result) <= self.tolerance
