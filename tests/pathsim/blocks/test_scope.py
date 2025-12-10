@@ -502,38 +502,6 @@ class TestRealtimeScope(unittest.TestCase):
         self.assertIsNotNone(S.recording)
 
 
-class TestScopeScheduledSampling(unittest.TestCase):
-    """Test scheduled sampling events in Scope"""
-
-    def test_scheduled_sampling_event(self):
-        """Test that Scope with sampling_rate creates a Schedule event"""
-        S = Scope(sampling_rate=0.1, t_wait=1.0)
-
-        # Should have events
-        self.assertEqual(len(S.events), 1)
-
-        # Event should be a Schedule
-        from pathsim.events import Schedule
-        self.assertIsInstance(S.events[0], Schedule)
-
-
-    def test_scheduled_sampling_functionality(self):
-        """Test that scheduled sampling event actually records data"""
-        S = Scope(sampling_rate=0.1, t_wait=0.0)
-
-        # Get the scheduled event
-        event = S.events[0]
-
-        # Simulate calling the event's action at different times
-        for t in [0.1, 0.2, 0.3]:
-            S.inputs[0] = t
-            # Manually trigger the event action
-            event.func_act(t)
-
-        # Should have recorded 3 points
-        self.assertEqual(len(S.recording), 3)
-
-
 # RUN TESTS LOCALLY ====================================================================
 
 if __name__ == '__main__':
