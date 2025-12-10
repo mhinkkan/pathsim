@@ -48,6 +48,9 @@ class Scope(Block):
     ----------
     recording : dict
         recording, where key is time, and value the recorded values
+    _sample_next_timestep : bool
+        flag to indicate this is a timestep to sample, only used for event based sampling 
+        when `sampling_rate` is provided as an arg
     events : list[Schedule]
         internal scheduled event for periodic input sampling when `sampling_rate` is provided
     """
@@ -69,10 +72,13 @@ class Scope(Block):
 
         #sampling produces discrete time behavior
         if not (sampling_rate is None):
+
+            #flag to indicate this is a timestep to sample
+            self._sample_next_timestep = False
             
             #internal scheduled list event
             def _sample(t):
-                self.recording[t] = self.inputs.to_array()
+                self._sample_next_timestep = True
 
             self.events = [
                 Schedule(
@@ -119,16 +125,20 @@ class Scope(Block):
         """Sample the data from all inputs, and overwrites existing timepoints, 
         since we use a dict for storing the recorded data.
  
-        If `sampling_rate` is provided, this does nothing, since the sampling 
-        is handled by the internal `Schedule` event.
+        If `sampling_rate` is provided, this depends on the flag `_sample_next_timestep`, 
+        set by the internal `Schedule` event.
 
         Parameters
         ----------
         t : float
             evaluation time for sampling
         """
-        if self.sampling_rate is None and t >= self.t_wait: 
+        if self.sampling_rate is None: 
+            if t >= self.t_wait:
+                self.recording[t] = self.inputs.to_array()
+        elif self._sample_next_timestep:
             self.recording[t] = self.inputs.to_array()
+            self._sample_next_timestep = False
 
 
     def plot(self, *args, **kwargs):
