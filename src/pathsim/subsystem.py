@@ -12,8 +12,6 @@
 
 import numpy as np
 
-from collections import defaultdict
-
 from .connection import Connection
 
 from .blocks._block import Block

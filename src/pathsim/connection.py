@@ -10,12 +10,7 @@
 
 # IMPORTS ===============================================================================
 
-import json
-
 from .utils.portreference import PortReference
-
-from .optim.anderson import Anderson
-
 
 # CLASSES ===============================================================================
 
@@ -245,15 +240,6 @@ class Connection:
         self._active = False
 
 
-    def to_dict(self):
-        """Convert connection to dictionary representation for serialization"""
-        return {
-            "id": id(self),
-            "source": self.source.to_dict(),
-            "targets": [trg.to_dict() for trg in self.targets]
-        }
-
-
     def update(self):
         """Transfers data from the source block output port 
         to the target block input port.
@@ -285,15 +271,6 @@ class Duplex(Connection):
         import warnings
         warnings.warn("'Duplex' will be deprecated in next release!")
         
-
-    def to_dict(self):
-        """Convert duplex to dictionary representation for serialization"""
-        return {
-            "id": id(self),
-            "source": self.source.to_dict(),
-            "target": self.target.to_dict()
-        }
-
 
     def update(self):
         """Transfers data between the two target blocks 
