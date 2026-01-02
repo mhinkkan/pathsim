@@ -220,17 +220,15 @@ class Simulation:
         #flag for setting the simulation active
         self._active = True
 
-        #initialize logging (self-contained via LoggerManager)
-        output = self.log if isinstance(self.log, str) else None
+        #initialize logging 
         logger_mgr = LoggerManager(
             enabled=bool(self.log),
-            output=output,
+            output=self.log if isinstance(self.log, str) else None,
             level=logging.INFO,
             date_format='%H:%M:%S'
-        )
+            )
         self.logger = logger_mgr.get_logger("simulation")
-        if self.log:
-            self.logger.info(f"LOGGING (log: {self.log})")
+        self.logger.info(f"LOGGING (log: {self.log})")
 
         #prepare and add blocks (including internal events)
         if blocks is not None:

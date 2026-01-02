@@ -6,8 +6,6 @@
 ##              Centralized logging configuration for PathSim package.
 ##          Provides a singleton manager for consistent logging across modules.
 ##
-#                               Milan Rother 2025
-##
 ########################################################################################
 
 # IMPORTS ==============================================================================
@@ -120,7 +118,7 @@ class LoggerManager:
                     level=level,
                     format=format,
                     date_format=date_format
-                )
+                    )
 
 
     def _setup_root_logger(self):
@@ -151,7 +149,8 @@ class LoggerManager:
         self._current_handler = None
 
 
-    def configure(self, enabled=True, output=None, level=logging.INFO, format=None, date_format=None):
+    def configure(self, enabled=True, output=None, level=logging.INFO, 
+                  format=None, date_format=None):
         """Configure the root PathSim logger and all child loggers.
 
         This method sets up the logging system with the specified parameters.
