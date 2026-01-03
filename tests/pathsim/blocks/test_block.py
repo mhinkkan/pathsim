@@ -13,6 +13,7 @@ import unittest
 import numpy as np
 
 from pathsim.blocks._block import Block
+from pathsim.blocks.amplifier import Amplifier
 from pathsim.utils.register import Register
 from pathsim.utils.portreference import PortReference
 
@@ -187,9 +188,71 @@ class TestBlock(unittest.TestCase):
 
         B = Block()
 
-        #test default implementation 
+        #test default implementation
         self.assertEqual(B.step(None, None), (True, 0.0, 1.0))
 
+
+    def test_info_base_block(self):
+        """Test info method on base Block class"""
+
+        info = Block.info()
+
+        #check all expected keys are present
+        expected_keys = {"type", "description", "shape", "size", "in_labels", "out_labels", "parameters"}
+        self.assertEqual(set(info.keys()), expected_keys)
+
+        #check type is correct
+        self.assertEqual(info["type"], "Block")
+
+        #check description is the docstring
+        self.assertIn("Base 'Block' object", info["description"])
+
+        #check shape (default 1 input, 1 output)
+        self.assertEqual(info["shape"], (1, 1))
+
+        #check size (1 block, 0 internal states for base block)
+        self.assertEqual(info["size"], (1, 0))
+
+        #check parameters (base Block has no parameters)
+        self.assertEqual(info["parameters"], {})
+
+
+    def test_info_with_parameters(self):
+        """Test info method on block with parameters"""
+
+        info = Amplifier.info()
+
+        #check type is correct
+        self.assertEqual(info["type"], "Amplifier")
+
+        #check description contains relevant info
+        self.assertIn("Amplifies", info["description"])
+
+        #check shape (SISO block)
+        self.assertEqual(info["shape"], (1, 1))
+
+        #check parameters include gain with default
+        self.assertIn("gain", info["parameters"])
+        self.assertEqual(info["parameters"]["gain"]["default"], 1.0)
+
+
+    def test_info_caching(self):
+        """Test that info method results are cached"""
+
+        #clear cache first
+        Block.info.cache_clear()
+
+        #call info twice
+        info1 = Block.info()
+        info2 = Block.info()
+
+        #should be same object due to caching
+        self.assertIs(info1, info2)
+
+        #check cache was used
+        cache_info = Block.info.cache_info()
+        self.assertEqual(cache_info.hits, 1)
+        self.assertEqual(cache_info.misses, 1)
 
 
 # RUN TESTS LOCALLY ====================================================================
