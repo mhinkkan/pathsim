@@ -217,9 +217,6 @@ class Simulation:
         #collection of blocks with internal events
         self._blocks_evt = set()
 
-        #collection of blocks that record data
-        self._blocks_rec = set()
-
         #flag for setting the simulation active
         self._active = True
 
@@ -363,10 +360,6 @@ class Simulation:
         #add to eventful list if internal events
         if block.events:
             self._blocks_evt.add(block)
-
-        #add to recording list
-        if block._rec:
-            self._blocks_rec.add(block)
 
         #add block to global blocklist
         self.blocks.add(block)
@@ -1469,18 +1462,21 @@ class Simulation:
     # data extraction -------------------------------------------------------------
 
     def collect(self):
-        """Collect all current simulation results from the internal recording blocks
+        """Collect all current simulation results from the internal 
+        recording blocks
     
         Returns
         -------
         results : dict
         """
-
-        scopes = {
-            id(block): block.read() for block in self._blocks_rec
-        }
-
-
+        scopes, spectra = {}, {}
+        for block in self.blocks:
+            for _category, _id, _data in block.collect():
+                if _category == "scope":
+                    scopes[_id] = _data
+                elif _category == "spectrum":
+                    spectra[_id] = _data
+        return {"scopes": scopes, "spectra": spectra}
 
 
     # simulation execution --------------------------------------------------------

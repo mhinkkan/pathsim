@@ -101,9 +101,6 @@ class Spectrum(Block):
 
     def __init__(self, freq=[], t_wait=0.0, alpha=0.0, labels=[]):
         super().__init__()
-
-        #this block records data
-        self._rec = True
         
         #time delay until start recording
         self.t_wait = t_wait
@@ -212,6 +209,23 @@ class Spectrum(Block):
 
         #return spectrum from RFT
         return self.freq, spec/self.time
+
+
+    def collect(self):
+        """Yield (category, id, data) tuples for recording blocks to simplify 
+        global data collection from all recording blocks.
+        """
+        freq, data = self.read()
+        if data is not None:
+            yield (
+                "spectrum", 
+                id(self), 
+                {
+                    "freq": freq,
+                    "data": data,
+                    "labels": self.labels,
+                    }
+                )
 
 
     def solve(self, t, dt):
