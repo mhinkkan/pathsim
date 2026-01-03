@@ -11,6 +11,7 @@
 # IMPORTS ===============================================================================
 
 import inspect
+from functools import lru_cache
 
 from ..utils.register import Register
 from ..utils.portreference import PortReference
