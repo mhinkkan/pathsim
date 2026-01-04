@@ -93,30 +93,10 @@ class DynamicalSystem(Block):
         alg_length : int
             length of algebraic path
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         has_passthrough = np.any(self.op_alg.jac_u(x, u, 0.0))
         return int(has_passthrough)
 
-
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            solver instance to use as parent
-        solver_args : dict
-            parameters for solver initialization
-        """
-        if self.engine is None:
-            #initialize the integration engine with right hand side
-            self.engine = Solver(self.initial_value, parent, **solver_args)
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_args)
-        
 
     def update(self, t):
         """update system equation for fixed point loop, by evaluating the
@@ -127,7 +107,7 @@ class DynamicalSystem(Block):
         t : float
             evaluation time
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         self.outputs.update_from_array(self.op_alg(x, u, t))
 
 
@@ -146,7 +126,7 @@ class DynamicalSystem(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -170,6 +150,6 @@ class DynamicalSystem(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)

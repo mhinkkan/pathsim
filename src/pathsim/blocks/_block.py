@@ -356,22 +356,33 @@ class Block:
     # methods for blocks with integration engines ---------------------------------------
 
     def set_solver(self, Solver, parent, **solver_args):
-        """Initialize the numerical integration engine with local truncation error 
+        """Initialize the numerical integration engine with local truncation error
         tolerance if required.
 
-        If the block already has an integration engine, it is changed, 
-        if it does not require an integration engine, this method just passes.
+        If the block already has an integration engine, it is changed.
+        If the block does not have an 'initial_value' attribute, this method
+        does nothing (block is not dynamic).
 
         Parameters
         ----------
         Solver : Solver
-            numerical integrator
+            numerical integrator class
         parent : None | Solver
-            numerical integrator instance
+            numerical integrator instance for stage synchronization
         solver_args : dict
             additional args for the solver
         """
-        pass
+        #only initialize solver if block has initial_value (is dynamic)
+        if not hasattr(self, 'initial_value'):
+            return
+
+        #use unified create method - handles both new and existing engine
+        self.engine = Solver.create(
+            self.initial_value,
+            parent,
+            from_engine=self.engine,
+            **solver_args
+            )
 
 
     def revert(self):
@@ -463,7 +474,7 @@ class Block:
         """
         _inputs  = self.inputs.to_array()
         _outputs = self.outputs.to_array()
-        _states  = self.engine.get() if self.engine else []
+        _states  = self.engine.state if self.engine else []
         return _inputs, _outputs, _states
 
 
@@ -498,7 +509,7 @@ class Block:
 
         #no internal state -> standard 'Operator'
         if self.engine: 
-            x = self.engine.get()
+            x = self.engine.state
             y = self.op_alg(x, u, t)
         else: 
             y = self.op_alg(u)           
@@ -551,16 +562,16 @@ class Block:
             evaluation time
         dt : float
             integration timestep
-    
+
         Returns
-        ------- 
+        -------
         success : bool
             step was successful
         error : float
             local truncation error from adaptive integrators
-        scale : float
-            timestep rescale from adaptive integrators
+        scale : float | None
+            timestep rescale from adaptive integrators, None if no rescale needed
         """
 
         #by default no error estimate (error norm -> 0.0)
-        return True, 0.0, 1.0
+        return True, 0.0, None

@@ -8,14 +8,13 @@
 
 import csv
 
-import warnings
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ._block import Block
 
 from ..utils.realtimeplotter import RealtimePlotter
+from ..utils.deprecation import deprecated
 
 from .._constants import COLORS_ALL
 
@@ -121,6 +120,9 @@ class Spectrum(Block):
         self.freq = np.array(freq)
         self.omega = 2.0 * np.pi * self.freq
 
+        #initial state for integration engine
+        self.initial_value = 0.0
+
 
     def __len__(self):
         return 0
@@ -134,20 +136,6 @@ class Spectrum(Block):
         return np.kron(u, np.exp(-1j * self.omega * t)) - self.alpha * x
 
 
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """set the internal numerical integrator for the RFT
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        solver_kwargs : dict
-            parameters for solver initialization
-        """
-        if self.engine is None: self.engine = Solver(0.0, parent, **solver_kwargs)
-        else: self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
-
-        
     def reset(self):
         super().reset()
 
@@ -194,7 +182,7 @@ class Spectrum(Block):
             return self.freq, [np.zeros_like(self.freq)]*len(self.inputs)
 
         #get state from engine
-        state = self.engine.get()
+        state = self.engine.state
 
         #catch case where state has not been updated
         if np.all(state == self.engine.initial_value):
@@ -249,7 +237,7 @@ class Spectrum(Block):
             self.time = t - self.t_wait
 
             #advance solution of implicit update equation (no jacobian)
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), self.time)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), self.time)
             return self.engine.solve(f, None, dt)
 
         #no error 
@@ -281,11 +269,11 @@ class Spectrum(Block):
             self.time = t - self.t_wait
             
             #compute update step with integration engine
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), self.time)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), self.time)
             return self.engine.step(f, dt)
 
         #no error estimate
-        return True, 0.0, 1.0
+        return True, 0.0, None
 
 
     def sample(self, t, dt):
@@ -438,22 +426,23 @@ class Spectrum(Block):
         pass
 
 
+@deprecated(version="1.0.0")
 class RealtimeSpectrum(Spectrum):
-    """An extension of the 'Spectrum' block that also initializes a realtime plotter that 
-    creates an interactive plotting window while the simulation is running. 
-    
+    """An extension of the 'Spectrum' block that also initializes a realtime plotter.
+
+    Creates an interactive plotting window while the simulation is running.
     Otherwise implements the same functionality as the regular 'Spectrum' block.
-        
+
     Note
     ----
-    Due to the plotting being relatively expensive, including this block slows down 
+    Due to the plotting being relatively expensive, including this block slows down
     the simulation significantly but may still be valuable for debugging and testing.
 
     Parameters
     ----------
-    freq : array[float] 
+    freq : array[float]
         list of evaluation frequencies for RFT, can be arbitrarily spaced
-    t_wait : float 
+    t_wait : float
         wait time before starting RFT
     alpha : float
         exponential forgetting factor for realtime spectrum
@@ -466,13 +455,11 @@ class RealtimeSpectrum(Spectrum):
 
         #initialize realtime plotter
         self.plotter = RealtimePlotter(
-            update_interval=0.1, 
-            labels=labels, 
-            x_label="freq [Hz]", 
+            update_interval=0.1,
+            labels=labels,
+            x_label="freq [Hz]",
             y_label="magnitude"
             )
-
-        warnings.warn("'RealtimeSpectrum' block will be deprecated with release version 1.0.0")
 
 
     def step(self, t, dt):
@@ -508,8 +495,8 @@ class RealtimeSpectrum(Spectrum):
                 self.plotter.update_all(self.freq, abs(data))
 
             #compute update step with integration engine
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), _t)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), _t)
             return self.engine.step(f, dt)
-            
+
         #no error estimate
-        return True, 0.0, 1.0
+        return True, 0.0, None

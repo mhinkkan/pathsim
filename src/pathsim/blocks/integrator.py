@@ -65,28 +65,6 @@ class Integrator(Block):
         return 0
 
 
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            solver instance to use as parent
-        solver_args : dict
-            parameters for solver initialization
-        """
-
-        if self.engine is None:
-            #initialize the integration engine
-            self.engine = Solver(self.initial_value, parent, **solver_args)
-
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_args)
-
-
     def update(self, t):
         """update system equation fixed point loop
 
@@ -100,7 +78,7 @@ class Integrator(Block):
         t : float
             evaluation time
         """
-        self.outputs.update_from_array(self.engine.get())
+        self.outputs.update_from_array(self.engine.state)
 
 
     def solve(self, t, dt):

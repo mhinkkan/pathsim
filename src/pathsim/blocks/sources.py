@@ -13,6 +13,7 @@ import numpy as np
 
 from ._block import Block
 from ..utils.register import Register
+from ..utils.deprecation import deprecated
 from ..events.schedule import Schedule, ScheduleList
 from .._constants import TOLERANCE
 
@@ -376,8 +377,11 @@ class SinusoidalPhaseNoiseSource(Block):
         self.sig_white = sig_white
 
         #initial noise sampling
-        self.noise_1 = np.random.normal() 
-        self.noise_2 = np.random.normal() 
+        self.noise_1 = np.random.normal()
+        self.noise_2 = np.random.normal()
+
+        #initial state for integration engine
+        self.initial_value = 0.0
 
         #sampling produces discrete time behavior for noise
         if sampling_rate is None:
@@ -401,26 +405,6 @@ class SinusoidalPhaseNoiseSource(Block):
         return 0
 
 
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """Initialize or change the numerical integration engine for cumulative noise.
-        
-        Parameters
-        ----------
-        Solver : class
-            solver class to instantiate
-        parent : object
-            parent system object
-        **solver_kwargs : dict
-            additional keyword arguments for solver initialization
-        """
-        #initialize the numerical integration engine 
-        if self.engine is None: 
-            self.engine = Solver(0.0, parent, **solver_kwargs)
-        #change solver if already initialized
-        else: 
-            self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
-
-
     def reset(self):
         """Reset block state including noise samples."""
         super().reset()
@@ -440,7 +424,7 @@ class SinusoidalPhaseNoiseSource(Block):
             evaluation time
         """
         #compute phase error from white and cumulative noise
-        phase_error = self.sig_white * self.noise_1 + self.sig_cum * self.engine.get()
+        phase_error = self.sig_white * self.noise_1 + self.sig_cum * self.engine.state
 
         #set output
         self.outputs[0] = self.amplitude * np.sin(self.omega*t + self.phase + phase_error)
@@ -497,14 +481,14 @@ class SinusoidalPhaseNoiseSource(Block):
         Returns
         -------
         tuple
-            (accepted, error, scale_factor) - always (True, 0.0, 1.0) for noise
+            (accepted, error, scale_factor) - always (True, 0.0, None) for noise
         """
         #compute update step with integration engine
         f = self.noise_2
         self.engine.step(f, dt)
 
         #no error control for noise source
-        return True, 0.0, 1.0
+        return True, 0.0, None
 
 
 class ChirpPhaseNoiseSource(Block):
@@ -593,8 +577,11 @@ class ChirpPhaseNoiseSource(Block):
         self.sampling_rate = sampling_rate
 
         #initial noise sampling
-        self.noise_1 = np.random.normal() 
-        self.noise_2 = np.random.normal() 
+        self.noise_1 = np.random.normal()
+        self.noise_2 = np.random.normal()
+
+        #initial state for integration engine
+        self.initial_value = 0.0
 
         #sampling produces discrete time behavior for noise
         if sampling_rate is None:
@@ -645,26 +632,6 @@ class ChirpPhaseNoiseSource(Block):
         self.noise_2 = np.random.normal()
 
 
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """Initialize or change the numerical integration engine for phase integration.
-        
-        Parameters
-        ----------
-        Solver : class
-            solver class to instantiate
-        parent : object
-            parent system object
-        **solver_kwargs : dict
-            additional keyword arguments for solver initialization
-        """
-        if self.engine is None:
-            #initialize the numerical integration engine
-            self.engine = Solver(0.0, parent, **solver_kwargs)
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
-
-
     def sample(self, t, dt):
         """Sample from a normal distribution after successful timestep 
         to update internal noise samples.
@@ -691,7 +658,7 @@ class ChirpPhaseNoiseSource(Block):
         t : float
             evaluation time
         """
-        _phase = 2 * np.pi * (self.engine.get() + self.sig_white * self.noise_1) + self.phase
+        _phase = 2 * np.pi * (self.engine.state + self.sig_white * self.noise_1) + self.phase
         self.outputs[0] = self.amplitude * np.sin(_phase)
 
 
@@ -732,32 +699,19 @@ class ChirpPhaseNoiseSource(Block):
         Returns
         -------
         tuple
-            (accepted, error, scale_factor) - always (True, 0.0, 1.0) for chirp
+            (accepted, error, scale_factor) - always (True, 0.0, None) for chirp
         """
         f = self.f0 + self.BW * (1 + self._triangle_wave(t, 1/self.T))/2 + self.sig_cum * self.noise_2
         self.engine.step(f, dt)
 
         #no error control for chirp source
-        return True, 0.0, 1.0
+        return True, 0.0, None
         
 
+@deprecated(version="1.0.0", replacement="ChirpPhaseNoiseSource")
 class ChirpSource(ChirpPhaseNoiseSource):
-
-    def __init__(
-        self, 
-        amplitude=1, 
-        f0=1, 
-        BW=1, 
-        T=1, 
-        phase=0, 
-        sig_cum=0, 
-        sig_white=0, 
-        sampling_rate=10
-        ):
-        super().__init__(amplitude, f0, BW, T, phase, sig_cum, sig_white, sampling_rate)
-
-        import warnings
-        warnings.warn("'ChirpSource' block will be deprecated with release version 1.0.0, use 'ChirpPhaseNoiseSource' instead")
+    """Alias for ChirpPhaseNoiseSource."""
+    pass
 
 
 
@@ -964,13 +918,10 @@ class PulseSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="PulseSource")
 class Pulse(PulseSource):
-
-    def __init__(self, amplitude=1.0, T=1.0, t_rise=0.0, t_fall=0.0, tau=0.0, duty=0.5):
-        super().__init__(amplitude, T, t_rise, t_fall, tau, duty)
-
-        import warnings
-        warnings.warn("'Pulse' block will be deprecated with release version 1.0.0, use 'PulseSource' instead")
+    """Alias for PulseSource."""
+    pass
 
 
 class ClockSource(Block):
@@ -1027,13 +978,10 @@ class ClockSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="ClockSource")
 class Clock(ClockSource):
-
-    def __init__(self, T=1, tau=0):
-        super().__init__(T, tau)
-
-        import warnings
-        warnings.warn("'Clock' block will be deprecated with release version 1.0.0, use 'ClockSource' instead")
+    """Alias for ClockSource."""
+    pass
 
 
 
@@ -1194,10 +1142,7 @@ class StepSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="StepSource")
 class Step(StepSource):
-
-    def __init__(self, amplitude=1, tau=0.0):
-        super().__init__(amplitude, tau)
-
-        import warnings
-        warnings.warn("'Step' block will be deprecated with release version 1.0.0, use 'StepSource' instead")
+    """Alias for StepSource."""
+    pass

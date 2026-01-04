@@ -11,6 +11,7 @@ import numpy as np
 
 from ._block import Block
 from ..utils.register import Register
+from ..utils.deprecation import deprecated
 from ..events.schedule import Schedule 
 
 
@@ -100,10 +101,7 @@ class RandomNumberGenerator(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="RandomNumberGenerator")
 class RNG(RandomNumberGenerator):
-
-    def __init__(self, sampling_rate=None):
-        super().__init__(sampling_rate)
-
-        import warnings
-        warnings.warn("'RNG' block will be deprecated with release version 1.0.0, use 'RandomNumberGenerator' instead")
+    """Alias for RandomNumberGenerator."""
+    pass

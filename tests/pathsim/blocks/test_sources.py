@@ -234,7 +234,8 @@ class TestSinusoidalPhaseNoiseSource(unittest.TestCase):
         # Mock the engine
         S.engine = Mock()
         S.engine.get.return_value = 0.0
-        
+        S.engine.state = 0.0
+
         # Test update without noise
         S.update(0)
         self.assertAlmostEqual(S.outputs[0], 0, places=10)
@@ -299,7 +300,8 @@ class TestChirpPhaseNoiseSource(unittest.TestCase):
         # Mock the engine
         C.engine = Mock()
         C.engine.get.return_value = 0.0
-        
+        C.engine.state = 0.0
+
         C.update(0)
         # Without frequency sweep, should be 0
         self.assertAlmostEqual(C.outputs[0], 0, places=10)

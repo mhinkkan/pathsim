@@ -19,6 +19,7 @@ from ._block import Block
 
 from ..utils.register import Register
 from ..utils.gilbert import gilbert_realization
+from ..utils.deprecation import deprecated
 
 from ..optim.operator import DynamicOperator
 
@@ -126,28 +127,6 @@ class StateSpace(Block):
         #check if direct passthrough exists
         return int(np.any(self.D)) if self._active else 0
 
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            solver instance to use as parent
-        solver_args : dict
-            parameters for solver initialization
-        """
-        
-        if self.engine is None:
-            #initialize the integration engine with right hand side
-            self.engine = Solver(self.initial_value, parent, **solver_args)
-
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_args)
-
-
     def solve(self, t, dt):
         """advance solution of implicit update equation of the solver
 
@@ -163,7 +142,7 @@ class StateSpace(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -187,7 +166,7 @@ class StateSpace(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)
 
@@ -252,22 +231,10 @@ class TransferFunctionPRC(StateSpace):
         super().__init__(A, B, C, D)
 
 
-class TransferFunction(TransferFunctionPRC): 
-    """Alias for `TransferFunctionPRC`.
-
-    .. warning::
-
-        This class will be deprecated in the future as it is an alias for `TransferFunctionPRC`.
-        Please use `TransferFunctionPRC` for future code.
-    """
-    
-    def __init__(self, Poles=[], Residues=[], Const=0.0):
-        super().__init__(Poles, Residues, Const)
-
-        import warnings
-        warnings.warn(
-            "'TransferFunction' is an alias for 'TransferFunctionPRC' and will be deprecated in the future!"
-            )
+@deprecated(version="1.0.0", replacement="TransferFunctionPRC")
+class TransferFunction(TransferFunctionPRC):
+    """Alias for TransferFunctionPRC."""
+    pass
 
 
 class TransferFunctionZPG(StateSpace):
