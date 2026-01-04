@@ -78,7 +78,7 @@ class Integrator(Block):
         t : float
             evaluation time
         """
-        self.outputs.update_from_array(self.engine.get())
+        self.outputs.update_from_array(self.engine.state)
 
 
     def solve(self, t, dt):

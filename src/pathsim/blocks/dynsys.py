@@ -93,7 +93,7 @@ class DynamicalSystem(Block):
         alg_length : int
             length of algebraic path
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         has_passthrough = np.any(self.op_alg.jac_u(x, u, 0.0))
         return int(has_passthrough)
 
@@ -107,7 +107,7 @@ class DynamicalSystem(Block):
         t : float
             evaluation time
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         self.outputs.update_from_array(self.op_alg(x, u, t))
 
 
@@ -126,7 +126,7 @@ class DynamicalSystem(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -150,6 +150,6 @@ class DynamicalSystem(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)

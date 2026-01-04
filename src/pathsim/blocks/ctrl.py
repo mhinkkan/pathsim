@@ -129,7 +129,7 @@ class PID(Block):
         t : float
             evaluation time
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.state, self.inputs[0]
         y = self.op_alg(x, u, t)
         self.outputs.update_from_array(y)
 
@@ -149,7 +149,7 @@ class PID(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.state, self.inputs[0]
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -173,7 +173,7 @@ class PID(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs[0]
+        x, u = self.engine.state, self.inputs[0]
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)
 

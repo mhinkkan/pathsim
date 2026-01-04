@@ -474,7 +474,7 @@ class Block:
         """
         _inputs  = self.inputs.to_array()
         _outputs = self.outputs.to_array()
-        _states  = self.engine.get() if self.engine else []
+        _states  = self.engine.state if self.engine else []
         return _inputs, _outputs, _states
 
 
@@ -509,7 +509,7 @@ class Block:
 
         #no internal state -> standard 'Operator'
         if self.engine: 
-            x = self.engine.get()
+            x = self.engine.state
             y = self.op_alg(x, u, t)
         else: 
             y = self.op_alg(u)           

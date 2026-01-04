@@ -129,7 +129,7 @@ class ODE(Block):
         t : float
             evaluation time
         """
-        self.outputs.update_from_array(self.engine.get())
+        self.outputs.update_from_array(self.engine.state)
 
 
     def solve(self, t, dt):
@@ -147,7 +147,7 @@ class ODE(Block):
         error : float
             solver residual norm
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f, J = self.op_dyn(x, u, t), self.op_dyn.jac_x(x, u, t)
         return self.engine.solve(f, J, dt)
 
@@ -171,6 +171,6 @@ class ODE(Block):
         scale : float
             timestep rescale from adaptive integrators
         """
-        x, u = self.engine.get(), self.inputs.to_array()
+        x, u = self.engine.state, self.inputs.to_array()
         f = self.op_dyn(x, u, t)
         return self.engine.step(f, dt)

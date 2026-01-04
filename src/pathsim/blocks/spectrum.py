@@ -183,7 +183,7 @@ class Spectrum(Block):
             return self.freq, [np.zeros_like(self.freq)]*len(self.inputs)
 
         #get state from engine
-        state = self.engine.get()
+        state = self.engine.state
 
         #catch case where state has not been updated
         if np.all(state == self.engine.initial_value):
@@ -238,7 +238,7 @@ class Spectrum(Block):
             self.time = t - self.t_wait
 
             #advance solution of implicit update equation (no jacobian)
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), self.time)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), self.time)
             return self.engine.solve(f, None, dt)
 
         #no error 
@@ -270,7 +270,7 @@ class Spectrum(Block):
             self.time = t - self.t_wait
             
             #compute update step with integration engine
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), self.time)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), self.time)
             return self.engine.step(f, dt)
 
         #no error estimate
@@ -497,7 +497,7 @@ class RealtimeSpectrum(Spectrum):
                 self.plotter.update_all(self.freq, abs(data))
 
             #compute update step with integration engine
-            f = self._kernel(self.engine.get(), self.inputs.to_array(), _t)
+            f = self._kernel(self.engine.state, self.inputs.to_array(), _t)
             return self.engine.step(f, dt)
             
         #no error estimate

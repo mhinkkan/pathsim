@@ -423,7 +423,7 @@ class SinusoidalPhaseNoiseSource(Block):
             evaluation time
         """
         #compute phase error from white and cumulative noise
-        phase_error = self.sig_white * self.noise_1 + self.sig_cum * self.engine.get()
+        phase_error = self.sig_white * self.noise_1 + self.sig_cum * self.engine.state
 
         #set output
         self.outputs[0] = self.amplitude * np.sin(self.omega*t + self.phase + phase_error)
@@ -657,7 +657,7 @@ class ChirpPhaseNoiseSource(Block):
         t : float
             evaluation time
         """
-        _phase = 2 * np.pi * (self.engine.get() + self.sig_white * self.noise_1) + self.phase
+        _phase = 2 * np.pi * (self.engine.state + self.sig_white * self.noise_1) + self.phase
         self.outputs[0] = self.amplitude * np.sin(_phase)
 
 
