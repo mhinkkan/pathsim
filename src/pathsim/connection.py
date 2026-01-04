@@ -11,6 +11,7 @@
 # IMPORTS ===============================================================================
 
 from .utils.portreference import PortReference
+from .utils.deprecation import deprecated
 
 # CLASSES ===============================================================================
 
@@ -248,9 +249,10 @@ class Connection:
             self.source.to(trg)
 
 
+@deprecated(version="1.0.0")
 class Duplex(Connection):
-    """Extension of the 'Connection' class, that defines bidirectional 
-    connections between two blocks by grouping together the inputs and 
+    """Extension of the 'Connection' class, that defines bidirectional
+    connections between two blocks by grouping together the inputs and
     outputs of the blocks into an IO-pair.
     """
 
@@ -258,18 +260,15 @@ class Duplex(Connection):
 
 
     def __init__(self, source, target):
-        
+
         self.source = source if isinstance(source, PortReference) else PortReference(source)
         self.target = target if isinstance(target, PortReference) else PortReference(target)
-        
+
         #this is required for path length estimation
         self.targets = [self.target, self.source]
 
         #flag to set connection active
         self._active = True
-
-        import warnings
-        warnings.warn("'Duplex' will be deprecated in next release!")
         
 
     def update(self):

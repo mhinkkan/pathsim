@@ -19,6 +19,7 @@ from ._block import Block
 
 from ..utils.register import Register
 from ..utils.gilbert import gilbert_realization
+from ..utils.deprecation import deprecated
 
 from ..optim.operator import DynamicOperator
 
@@ -230,22 +231,10 @@ class TransferFunctionPRC(StateSpace):
         super().__init__(A, B, C, D)
 
 
-class TransferFunction(TransferFunctionPRC): 
-    """Alias for `TransferFunctionPRC`.
-
-    .. warning::
-
-        This class will be deprecated in the future as it is an alias for `TransferFunctionPRC`.
-        Please use `TransferFunctionPRC` for future code.
-    """
-    
-    def __init__(self, Poles=[], Residues=[], Const=0.0):
-        super().__init__(Poles, Residues, Const)
-
-        import warnings
-        warnings.warn(
-            "'TransferFunction' is an alias for 'TransferFunctionPRC' and will be deprecated in the future!"
-            )
+@deprecated(version="1.0.0", replacement="TransferFunctionPRC")
+class TransferFunction(TransferFunctionPRC):
+    """Alias for TransferFunctionPRC."""
+    pass
 
 
 class TransferFunctionZPG(StateSpace):

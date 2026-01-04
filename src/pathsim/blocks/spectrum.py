@@ -8,14 +8,13 @@
 
 import csv
 
-import warnings
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ._block import Block
 
 from ..utils.realtimeplotter import RealtimePlotter
+from ..utils.deprecation import deprecated
 
 from .._constants import COLORS_ALL
 
@@ -427,22 +426,23 @@ class Spectrum(Block):
         pass
 
 
+@deprecated(version="1.0.0")
 class RealtimeSpectrum(Spectrum):
-    """An extension of the 'Spectrum' block that also initializes a realtime plotter that 
-    creates an interactive plotting window while the simulation is running. 
-    
+    """An extension of the 'Spectrum' block that also initializes a realtime plotter.
+
+    Creates an interactive plotting window while the simulation is running.
     Otherwise implements the same functionality as the regular 'Spectrum' block.
-        
+
     Note
     ----
-    Due to the plotting being relatively expensive, including this block slows down 
+    Due to the plotting being relatively expensive, including this block slows down
     the simulation significantly but may still be valuable for debugging and testing.
 
     Parameters
     ----------
-    freq : array[float] 
+    freq : array[float]
         list of evaluation frequencies for RFT, can be arbitrarily spaced
-    t_wait : float 
+    t_wait : float
         wait time before starting RFT
     alpha : float
         exponential forgetting factor for realtime spectrum
@@ -455,13 +455,11 @@ class RealtimeSpectrum(Spectrum):
 
         #initialize realtime plotter
         self.plotter = RealtimePlotter(
-            update_interval=0.1, 
-            labels=labels, 
-            x_label="freq [Hz]", 
+            update_interval=0.1,
+            labels=labels,
+            x_label="freq [Hz]",
             y_label="magnitude"
             )
-
-        warnings.warn("'RealtimeSpectrum' block will be deprecated with release version 1.0.0")
 
 
     def step(self, t, dt):

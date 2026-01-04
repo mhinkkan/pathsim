@@ -13,6 +13,7 @@ import numpy as np
 
 from ._block import Block
 from ..utils.register import Register
+from ..utils.deprecation import deprecated
 from ..events.schedule import Schedule, ScheduleList
 from .._constants import TOLERANCE
 
@@ -707,23 +708,10 @@ class ChirpPhaseNoiseSource(Block):
         return True, 0.0, None
         
 
+@deprecated(version="1.0.0", replacement="ChirpPhaseNoiseSource")
 class ChirpSource(ChirpPhaseNoiseSource):
-
-    def __init__(
-        self, 
-        amplitude=1, 
-        f0=1, 
-        BW=1, 
-        T=1, 
-        phase=0, 
-        sig_cum=0, 
-        sig_white=0, 
-        sampling_rate=10
-        ):
-        super().__init__(amplitude, f0, BW, T, phase, sig_cum, sig_white, sampling_rate)
-
-        import warnings
-        warnings.warn("'ChirpSource' block will be deprecated with release version 1.0.0, use 'ChirpPhaseNoiseSource' instead")
+    """Alias for ChirpPhaseNoiseSource."""
+    pass
 
 
 
@@ -930,13 +918,10 @@ class PulseSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="PulseSource")
 class Pulse(PulseSource):
-
-    def __init__(self, amplitude=1.0, T=1.0, t_rise=0.0, t_fall=0.0, tau=0.0, duty=0.5):
-        super().__init__(amplitude, T, t_rise, t_fall, tau, duty)
-
-        import warnings
-        warnings.warn("'Pulse' block will be deprecated with release version 1.0.0, use 'PulseSource' instead")
+    """Alias for PulseSource."""
+    pass
 
 
 class ClockSource(Block):
@@ -993,13 +978,10 @@ class ClockSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="ClockSource")
 class Clock(ClockSource):
-
-    def __init__(self, T=1, tau=0):
-        super().__init__(T, tau)
-
-        import warnings
-        warnings.warn("'Clock' block will be deprecated with release version 1.0.0, use 'ClockSource' instead")
+    """Alias for ClockSource."""
+    pass
 
 
 
@@ -1160,10 +1142,7 @@ class StepSource(Block):
         return 0
 
 
+@deprecated(version="1.0.0", replacement="StepSource")
 class Step(StepSource):
-
-    def __init__(self, amplitude=1, tau=0.0):
-        super().__init__(amplitude, tau)
-
-        import warnings
-        warnings.warn("'Step' block will be deprecated with release version 1.0.0, use 'StepSource' instead")
+    """Alias for StepSource."""
+    pass

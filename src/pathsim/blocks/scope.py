@@ -10,15 +10,15 @@
 # IMPORTS ===============================================================================
 
 import csv
-
 import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ._block import Block
-from ..events.schedule import Schedule 
+from ..events.schedule import Schedule
 from ..utils.realtimeplotter import RealtimePlotter
+from ..utils.deprecation import deprecated
 
 from .._constants import COLORS_ALL
 
@@ -428,16 +428,17 @@ class Scope(Block):
 
 
 
+@deprecated(version="1.0.0")
 class RealtimeScope(Scope):
-    """An extension of the 'Scope' block that also initializes a realtime plotter 
+    """An extension of the 'Scope' block that also initializes a realtime plotter
     that creates an interactive plotting window while the simulation is running.
 
     Otherwise implements the same functionality as the regular 'Scope' block.
 
     Note
     -----
-    Due to the plotting being relatively expensive, including this block 
-    slows down the simulation significantly but may still be valuable for 
+    Due to the plotting being relatively expensive, including this block
+    slows down the simulation significantly but may still be valuable for
     debugging and testing.
 
     Parameters
@@ -446,7 +447,7 @@ class RealtimeScope(Scope):
         number of samples time unit, default is every timestep
     t_wait : float
         wait time before starting recording
-    labels : list[str] 
+    labels : list[str]
         labels for the scope traces, and for the csv
     max_samples : int, None
         number of samples for realtime display, all per default
@@ -462,14 +463,12 @@ class RealtimeScope(Scope):
 
         #initialize realtime plotter
         self.plotter = RealtimePlotter(
-            max_samples=max_samples, 
-            update_interval=0.1, 
-            labels=labels, 
-            x_label="time [s]", 
+            max_samples=max_samples,
+            update_interval=0.1,
+            labels=labels,
+            x_label="time [s]",
             y_label=""
             )
-
-        warnings.warn("'RealtimeScope' block will be deprecated with release version 1.0.0")
 
 
     def sample(self, t, dt):
