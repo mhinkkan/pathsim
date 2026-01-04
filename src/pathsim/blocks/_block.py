@@ -356,22 +356,33 @@ class Block:
     # methods for blocks with integration engines ---------------------------------------
 
     def set_solver(self, Solver, parent, **solver_args):
-        """Initialize the numerical integration engine with local truncation error 
+        """Initialize the numerical integration engine with local truncation error
         tolerance if required.
 
-        If the block already has an integration engine, it is changed, 
-        if it does not require an integration engine, this method just passes.
+        If the block already has an integration engine, it is changed.
+        If the block does not have an 'initial_value' attribute, this method
+        does nothing (block is not dynamic).
 
         Parameters
         ----------
         Solver : Solver
-            numerical integrator
+            numerical integrator class
         parent : None | Solver
-            numerical integrator instance
+            numerical integrator instance for stage synchronization
         solver_args : dict
             additional args for the solver
         """
-        pass
+        #only initialize solver if block has initial_value (is dynamic)
+        if not hasattr(self, 'initial_value'):
+            return
+
+        #use unified create method - handles both new and existing engine
+        self.engine = Solver.create(
+            self.initial_value,
+            parent,
+            from_engine=self.engine,
+            **solver_args
+            )
 
 
     def revert(self):

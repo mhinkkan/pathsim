@@ -121,6 +121,9 @@ class Spectrum(Block):
         self.freq = np.array(freq)
         self.omega = 2.0 * np.pi * self.freq
 
+        #initial state for integration engine
+        self.initial_value = 0.0
+
 
     def __len__(self):
         return 0
@@ -134,20 +137,6 @@ class Spectrum(Block):
         return np.kron(u, np.exp(-1j * self.omega * t)) - self.alpha * x
 
 
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """set the internal numerical integrator for the RFT
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        solver_kwargs : dict
-            parameters for solver initialization
-        """
-        if self.engine is None: self.engine = Solver(0.0, parent, **solver_kwargs)
-        else: self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
-
-        
     def reset(self):
         super().reset()
 

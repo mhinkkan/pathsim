@@ -85,6 +85,9 @@ class PID(Block):
         #maximum frequency for differentiator approximation
         self.f_max = f_max
 
+        #initial state for integration engine (differentiator + integrator states)
+        self.initial_value = np.zeros(2)
+
         def _g_pid(x, u, t):
             x1, x2 = x
             yp = self.Kp * u
@@ -116,24 +119,6 @@ class PID(Block):
 
     def __len__(self):
         return 1 if self._active and (self.Kp or self.Kd) else 0
-
-
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            numerical solver instance
-        solver_args : dict
-            parameters for solver initialization
-        """
-        #initialize the numerical integration engine with kernel
-        if not self.engine: self.engine = Solver(np.zeros(2), parent, **solver_args)
-        #change solver if already initialized
-        else: self.engine = Solver.cast(self.engine, parent, **solver_args)
 
 
     def update(self, t):

@@ -98,26 +98,6 @@ class DynamicalSystem(Block):
         return int(has_passthrough)
 
 
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            solver instance to use as parent
-        solver_args : dict
-            parameters for solver initialization
-        """
-        if self.engine is None:
-            #initialize the integration engine with right hand side
-            self.engine = Solver(self.initial_value, parent, **solver_args)
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_args)
-        
-
     def update(self, t):
         """update system equation for fixed point loop, by evaluating the
         output function of the system

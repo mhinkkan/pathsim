@@ -376,8 +376,11 @@ class SinusoidalPhaseNoiseSource(Block):
         self.sig_white = sig_white
 
         #initial noise sampling
-        self.noise_1 = np.random.normal() 
-        self.noise_2 = np.random.normal() 
+        self.noise_1 = np.random.normal()
+        self.noise_2 = np.random.normal()
+
+        #initial state for integration engine
+        self.initial_value = 0.0
 
         #sampling produces discrete time behavior for noise
         if sampling_rate is None:
@@ -399,26 +402,6 @@ class SinusoidalPhaseNoiseSource(Block):
 
     def __len__(self):
         return 0
-
-
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """Initialize or change the numerical integration engine for cumulative noise.
-        
-        Parameters
-        ----------
-        Solver : class
-            solver class to instantiate
-        parent : object
-            parent system object
-        **solver_kwargs : dict
-            additional keyword arguments for solver initialization
-        """
-        #initialize the numerical integration engine 
-        if self.engine is None: 
-            self.engine = Solver(0.0, parent, **solver_kwargs)
-        #change solver if already initialized
-        else: 
-            self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
 
 
     def reset(self):
@@ -593,8 +576,11 @@ class ChirpPhaseNoiseSource(Block):
         self.sampling_rate = sampling_rate
 
         #initial noise sampling
-        self.noise_1 = np.random.normal() 
-        self.noise_2 = np.random.normal() 
+        self.noise_1 = np.random.normal()
+        self.noise_2 = np.random.normal()
+
+        #initial state for integration engine
+        self.initial_value = 0.0
 
         #sampling produces discrete time behavior for noise
         if sampling_rate is None:
@@ -643,26 +629,6 @@ class ChirpPhaseNoiseSource(Block):
         #reset noise samples
         self.noise_1 = np.random.normal()
         self.noise_2 = np.random.normal()
-
-
-    def set_solver(self, Solver, parent, **solver_kwargs):
-        """Initialize or change the numerical integration engine for phase integration.
-        
-        Parameters
-        ----------
-        Solver : class
-            solver class to instantiate
-        parent : object
-            parent system object
-        **solver_kwargs : dict
-            additional keyword arguments for solver initialization
-        """
-        if self.engine is None:
-            #initialize the numerical integration engine
-            self.engine = Solver(0.0, parent, **solver_kwargs)
-        else:
-            #change solver if already initialized
-            self.engine = Solver.cast(self.engine, parent, **solver_kwargs)
 
 
     def sample(self, t, dt):

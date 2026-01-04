@@ -177,7 +177,7 @@ class Solver:
 
     def get(self):
         """Returns current internal state of the solver.
-    
+
         Returns
         -------
         x : numeric, array[numeric]
@@ -185,22 +185,45 @@ class Solver:
         """
         return self.x
 
-    
+
     def set(self, x):
         """Sets the internal state of the integration engine.
 
-        This method is required for event based simulations, 
+        This method is required for event based simulations,
         and to handle discontinuities in state variables.
-        
+
         Parameters
         ----------
         x : numeric, array[numeric]
             new internal state of the solver
 
         """
-
         #overwrite internal state with value
         self.x = x
+
+
+    @property
+    def state(self):
+        """Property for cleaner access to internal state.
+
+        Returns
+        -------
+        x : numeric, array[numeric]
+            current internal state of the solver
+        """
+        return self.x
+
+
+    @state.setter
+    def state(self, value):
+        """Property setter for internal state.
+
+        Parameters
+        ----------
+        value : numeric, array[numeric]
+            new internal state of the solver
+        """
+        self.x = np.atleast_1d(value) if not np.isscalar(value) else value
 
 
     def reset(self):
@@ -275,6 +298,48 @@ class Solver:
         engine.set(other.get())
 
         return engine
+
+
+    @classmethod
+    def create(cls, initial_value, parent=None, from_engine=None, **solver_kwargs):
+        """Create a new solver instance, optionally inheriting state from existing engine.
+
+        This provides a unified interface for solver creation that handles both
+        new instantiation and solver switching (previously done via cast).
+
+        Parameters
+        ----------
+        initial_value : float, array
+            initial condition / integration constant
+        parent : None | Solver
+            parent solver instance for stage synchronization
+        from_engine : None | Solver
+            existing solver to inherit state and settings from
+        solver_kwargs : dict
+            additional args for the solver (tolerances, etc.)
+
+        Returns
+        -------
+        engine : Solver
+            new solver instance
+        """
+        if from_engine is not None:
+            #inherit tolerances from existing engine if not specified
+            if "tolerance_lte_rel" not in solver_kwargs:
+                solver_kwargs["tolerance_lte_rel"] = from_engine.tolerance_lte_rel
+            if "tolerance_lte_abs" not in solver_kwargs:
+                solver_kwargs["tolerance_lte_abs"] = from_engine.tolerance_lte_abs
+
+            #create new solver
+            engine = cls(initial_value, parent, **solver_kwargs)
+
+            #preserve state from old engine
+            engine.state = from_engine.state
+
+            return engine
+
+        #simple creation without existing engine
+        return cls(initial_value, parent, **solver_kwargs)
 
 
     # methods for adaptive timestep solvers --------------------------------------------

@@ -66,6 +66,9 @@ class Differentiator(Block):
         #maximum frequency for differentiator approximation
         self.f_max = f_max
 
+        #initial state for integration engine
+        self.initial_value = 0.0
+
         self.op_dyn = DynamicOperator(
             func=lambda x, u, t: self.f_max * (u - x),
             jac_x=lambda x, u, t: -self.f_max*np.eye(len(u))
@@ -78,25 +81,6 @@ class Differentiator(Block):
 
     def __len__(self):
         return 1 if self._active else 0
-
-
-    def set_solver(self, Solver, parent, **solver_args):
-        """set the internal numerical integrator
-
-        Parameters
-        ----------
-        Solver : Solver
-            numerical integration solver class
-        parent : None | Solver
-            solver instance to use as parent
-        solver_args : dict
-            parameters for solver initialization
-        """
-
-        #initialize the numerical integration engine with kernel
-        if self.engine is None: self.engine = Solver(0.0, parent, **solver_args)
-        #change solver if already initialized
-        else: self.engine = Solver.cast(self.engine, parent, **solver_args)
 
 
     def update(self, t):
