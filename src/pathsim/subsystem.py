@@ -592,7 +592,7 @@ class Subsystem(Block):
 
         If blocks already have solvers, change the numerical integrator
         to the 'Solver' class.
-        
+
         Parameters
         ----------
         Solver : Solver
@@ -600,11 +600,8 @@ class Subsystem(Block):
         parent : Solver
             numerical solver instance as parent
         solver_args : dict
-            args to initialize solver with 
+            args to initialize solver with
         """
-
-        #set internal dummy engine -> marks block as dynamic
-        self.engine = Solver(parent=parent, **solver_args)
 
         #set integration engines and assemble list of dynamic blocks
         self._blocks_dyn = []
@@ -612,6 +609,13 @@ class Subsystem(Block):
             block.set_solver(Solver, parent, **solver_args)
             if block.engine:
                 self._blocks_dyn.append(block)
+
+        #only set dummy engine if subsystem has dynamic blocks
+        #this prevents purely algebraic subsystems from being treated as dynamic
+        if self._blocks_dyn:
+            self.engine = Solver(parent=parent, **solver_args)
+        else:
+            self.engine = None
 
 
     def revert(self):

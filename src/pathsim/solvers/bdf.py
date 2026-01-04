@@ -95,6 +95,49 @@ class BDF(ImplicitSolver):
         return engine
 
 
+    @classmethod
+    def create(cls, initial_value, parent=None, from_engine=None, **solver_kwargs):
+        """Create a new BDF solver, properly initializing the startup solver.
+
+        Parameters
+        ----------
+        initial_value : float, array
+            initial condition / integration constant
+        parent : None | Solver
+            parent solver instance for stage synchronization
+        from_engine : None | Solver
+            existing solver to inherit state and settings from
+        solver_kwargs : dict
+            additional args for the solver
+
+        Returns
+        -------
+        engine : BDF
+            new BDF solver instance
+        """
+        if from_engine is not None:
+            #inherit tolerances from existing engine if not specified
+            if "tolerance_lte_rel" not in solver_kwargs:
+                solver_kwargs["tolerance_lte_rel"] = from_engine.tolerance_lte_rel
+            if "tolerance_lte_abs" not in solver_kwargs:
+                solver_kwargs["tolerance_lte_abs"] = from_engine.tolerance_lte_abs
+
+            #create new solver (this initializes startup in __init__)
+            engine = cls(initial_value, parent, **solver_kwargs)
+
+            #preserve state from old engine
+            engine.state = from_engine.state
+
+            #re-initialize startup solver from the new engine
+            engine.startup = DIRK3.create(initial_value, parent, **solver_kwargs)
+            engine.startup.state = from_engine.state
+
+            return engine
+
+        #simple creation without existing engine
+        return cls(initial_value, parent, **solver_kwargs)
+
+
     def stages(self, t, dt):
         """Generator that yields the intermediate evaluation 
         time during the timestep 't + ratio * dt'.
