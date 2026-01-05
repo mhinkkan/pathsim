@@ -1053,9 +1053,6 @@ class Simulation:
     def timestep_fixed_explicit(self, dt=None):
         """Advances the simulation by one timestep 'dt' for explicit fixed step solvers.
 
-        .. deprecated::
-            Use :meth:`timestep` instead.
-
         Parameters
         ----------
         dt : float
@@ -1080,9 +1077,6 @@ class Simulation:
     @deprecated(version="1.0.0", replacement="timestep")
     def timestep_fixed_implicit(self, dt=None):
         """Advances the simulation by one timestep 'dt' for implicit fixed step solvers.
-
-        .. deprecated::
-            Use :meth:`timestep` instead.
 
         Parameters
         ----------
@@ -1109,9 +1103,6 @@ class Simulation:
     def timestep_adaptive_explicit(self, dt=None):
         """Advances the simulation by one timestep 'dt' for explicit adaptive solvers.
 
-        .. deprecated::
-            Use :meth:`timestep` instead.
-
         Parameters
         ----------
         dt : float
@@ -1136,9 +1127,6 @@ class Simulation:
     @deprecated(version="1.0.0", replacement="timestep")
     def timestep_adaptive_implicit(self, dt=None):
         """Advances the simulation by one timestep 'dt' for implicit adaptive solvers.
-
-        .. deprecated::
-            Use :meth:`timestep` instead.
 
         Parameters
         ----------
