@@ -121,6 +121,7 @@ class Scope(Block):
         return time, data
 
 
+    @deprecated(version="1.0.0", reason="its against pathsims philosophy")
     def collect(self):
         """Yield (category, id, data) tuples for recording blocks to simplify 
         global data collection from all recording blocks.
