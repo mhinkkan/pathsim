@@ -169,10 +169,10 @@ class Scope(Block):
 
 
     def sample(self, t, dt):
-        """Sample the data from all inputs, and overwrites existing timepoints, 
-        since we use a dict for storing the recorded data.
- 
-        If `sampling_rate` is provided, this depends on the flag `_sample_next_timestep`, 
+        """Sample the data from all inputs. Skips duplicate timestamps to maintain
+        unique time points in the recording.
+
+        If `sampling_rate` is provided, this depends on the flag `_sample_next_timestep`,
         set by the internal `Schedule` event.
 
         Parameters
@@ -180,14 +180,24 @@ class Scope(Block):
         t : float
             evaluation time for sampling
         """
-        if self.sampling_rate is None: 
-            if t >= self.t_wait:
-                self.recording_time.append(t) 
-                self.recording_data.append(self.inputs.to_array())
+        #determine if we should sample
+        if self.sampling_rate is None:
+            should_sample = t >= self.t_wait
         elif self._sample_next_timestep:
-            self.recording_time.append(t) 
-            self.recording_data.append(self.inputs.to_array())
+            should_sample = True
             self._sample_next_timestep = False
+        else:
+            should_sample = False
+
+        if not should_sample:
+            return
+
+        #skip duplicate timestamps (can happen when continuing simulation)
+        if self.recording_time and self.recording_time[-1] == t:
+            return
+
+        self.recording_time.append(t)
+        self.recording_data.append(self.inputs.to_array())
 
 
     def plot(self, *args, **kwargs):
