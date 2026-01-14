@@ -41,12 +41,10 @@ The source code can be found in the [GitHub repository](https://github.com/paths
 
 If you want to contribute to **PathSim**s development, check out the [community guidelines](https://pathsim.readthedocs.io/en/latest/contributing.html). If you are curious about what the future holds for **PathSim**, check out the [roadmap](https://pathsim.readthedocs.io/en/latest/roadmap.html)!
 
-## GUI Frameworks
 
-**PathSim** does not provide a GUI for visualization of the blocks, connections, etc. However other projects have taken on that burden:
-- [PathView](https://github.com/festim-dev/PathView)
+## Graphical Interface
 
-**Pathsim** does not guarantee that these projects are up to date with the newest features.
+As of Jan 2026, after a massive rewrite, [PathView](https://github.com/pathsim/pathview) is now the official graphical user interface for PathSim. 
 
 
 ## Installation
